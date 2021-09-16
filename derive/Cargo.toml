@@ -1,0 +1,21 @@
+[package]
+name = "sql-orm-derive"
+version = "0.1.0"
+edition = "2018"
+description = "Simple SQL code generator."
+authors = ["luo wu <1542844298@qq.com>"]
+license = "MIT"
+keywords = ["sql", "db", "database", "simple", "codegen"]
+categories = ["database", "text-processing"]
+repository = "https://github.com/zuiyu1998/sql-orm.git"
+readme = "README.md"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.13.0"
+proc-macro-crate = "1.0.0"
+proc-macro2 = "1.0.28"
+quote = "1.0.9"
+syn = { version = "1.0.74", features = ["full"] }

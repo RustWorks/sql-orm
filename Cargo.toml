@@ -1,0 +1,25 @@
+[package]
+name = "sql-orm"
+version = "0.1.0"
+description = "Simple SQL code generator."
+authors = ["luo wu <1542844298@qq.com>"]
+license = "MIT"
+edition = "2018"
+keywords = ["sql", "db", "database", "simple", "codegen"]
+categories = ["database", "text-processing"]
+repository = "https://github.com/zuiyu1998/sql-orm.git"
+readme = "README.md"
+
+
+[features]
+default = ["uuid", "chrono"]
+
+[dependencies]
+sql-orm-derive = { path = "derive", version = "=0.1.0" }
+
+
+anyhow = "1.0"
+thiserror = "1.0"
+
+uuid = {version = "0.8", optional = true}
+chrono = { version = "0.4", optional = true}
