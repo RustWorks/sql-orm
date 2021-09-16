@@ -2,7 +2,8 @@ use crate::SqlBuilder;
 
 pub trait Table {
     const NAME: &'static str;
-    const FIELDS: &'static [&'static str];
+    
+    fn columns() -> Vec<&'static str>;
 }
 
 pub trait Model {
@@ -17,7 +18,7 @@ pub trait Model {
     }
 
     fn fields() -> Vec<&'static str> {
-        let fields = Self::Table::FIELDS.to_vec();
+        let fields = Self::Table::columns();
         let include = Self::include();
         let exclude = Self::exclude();
 

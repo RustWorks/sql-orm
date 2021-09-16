@@ -948,7 +948,7 @@ impl SqlBuilder {
         S: ToString,
         T: SqlArg,
     {
-        let mut expr = format!("{} = {}", &field.to_string(), value.sql_arg());
+        let expr = format!("{} = {}", &field.to_string(), value.sql_arg());
         self.sets.push(expr);
         self
     }

@@ -24,7 +24,11 @@ pub fn expand_derive_table(input: DeriveInput) -> syn::Result<TokenStream> {
         let expanded = quote! {
           impl sql_orm::Table for #ident {
               const NAME: &'static str = stringify!(#table_name);
-              const FIELDS: &'static [&'static str] = [#(#fields)*];
+              
+
+              fn columns() -> Vec<&'static str> {
+                  vec![#(#fields),*]
+              }
           }
         };
 
