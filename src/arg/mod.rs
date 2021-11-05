@@ -1,145 +1,164 @@
 use crate::quote;
-use std::borrow::{Cow, ToOwned};
+use std::{
+    borrow::{Cow, ToOwned},
+    ops::Deref,
+};
 
-#[cfg(feature="chrono")]
+#[cfg(feature = "chrono")]
 pub mod chrono;
 
-pub trait SqlArg {
-    fn sql_arg(&self) -> String;
+pub struct SqlArg(String);
+
+impl ToString for SqlArg {
+    fn to_string(&self) -> String {
+        self.0
+    }
 }
 
-impl SqlArg for str {
-    fn sql_arg(&self) -> String {
+impl Deref for SqlArg {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub trait ToSqlArg {
+    fn to_sql_arg(&self) -> SqlArg;
+}
+
+impl ToSqlArg for str {
+    fn to_sql_arg(&self) -> String {
+        SqlArg(quote(self))
+    }
+}
+
+impl ToSqlArg for &str {
+    fn to_sql_arg(&self) -> String {
         quote(self)
     }
 }
 
-impl SqlArg for &str {
-    fn sql_arg(&self) -> String {
-        quote(self)
-    }
-}
-
-impl SqlArg for Cow<'_, str> {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for Cow<'_, str> {
+    fn to_sql_arg(&self) -> String {
         quote(self[..].to_owned())
     }
 }
 
-impl SqlArg for String {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for String {
+    fn to_sql_arg(&self) -> String {
         quote(self)
     }
 }
 
-impl SqlArg for i8 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for i8 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for u8 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for u8 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for i16 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for i16 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for u16 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for u16 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for i32 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for i32 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for u32 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for u32 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for i64 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for i64 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for u64 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for u64 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for i128 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for i128 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for u128 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for u128 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for isize {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for isize {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for usize {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for usize {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for f32 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for f32 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for f64 {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for f64 {
+    fn to_sql_arg(&self) -> String {
         self.to_string()
     }
 }
 
-impl SqlArg for bool {
-    fn sql_arg(&self) -> String {
+impl ToSqlArg for bool {
+    fn to_sql_arg(&self) -> String {
         String::from(if *self { "TRUE" } else { "FALSE" })
     }
 }
 
-#[cfg(feature="uuid")]
-impl SqlArg for uuid::Uuid {
-    fn sql_arg(&self) -> String {
+#[cfg(feature = "uuid")]
+impl ToSqlArg for uuid::Uuid {
+    fn to_sql_arg(&self) -> String {
         self.to_hyphenated().to_string()
     }
 }
 
-impl<T: SqlArg> SqlArg for Option<T> {
-    fn sql_arg(&self) -> String {
+impl<T: ToSqlArg> ToSqlArg for Option<T> {
+    fn to_sql_arg(&self) -> String {
         match &*self {
-            Some(value) => value.sql_arg(),
+            Some(value) => value.to_sql_arg(),
             None => String::from("NULL"),
         }
     }
 }
 
-impl<T: SqlArg> SqlArg for &T {
-    fn sql_arg(&self) -> String {
-        (*self).sql_arg()
+impl<T: ToSqlArg> ToSqlArg for &T {
+    fn to_sql_arg(&self) -> String {
+        (*self).to_sql_arg()
     }
 }

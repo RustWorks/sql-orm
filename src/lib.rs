@@ -142,7 +142,7 @@
 //! # use anyhow::Result;
 //!
 //! # fn main() -> Result<()> {
-//! let mut names: HashMap<&str, &dyn SqlArg> = HashMap::new();
+//! let mut names: HashMap<&str, &dyn ToSqlArg> = HashMap::new();
 //! names.insert("min", &1_000);
 //! names.insert("max", &25_000);
 //!
@@ -159,21 +159,22 @@
 //!
 //! See [more examples](https://docs.rs/sql-builder/4.0.0/sql_builder/struct.SqlBuilder.html)
 
-pub mod table;
 pub mod arg;
 pub mod bind;
 pub mod error;
 pub mod name;
 pub mod prelude;
+pub mod table;
 #[path = "where-builder.rs"]
 pub mod where_builder;
 
-pub use table::{Table, Model};
+use prelude::SqlArg;
 pub use sql_orm_derive::Table;
+pub use table::{Model, Table};
 
-pub use arg::SqlArg;
 pub use crate::error::SqlBuilderError;
 pub use crate::name::SqlName;
+pub use arg::ToSqlArg;
 //pub use crate::where::WhereBuilder;
 use anyhow::Result;
 
@@ -946,9 +947,9 @@ impl SqlBuilder {
     pub fn set<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
-        let expr = format!("{} = {}", &field.to_string(), value.sql_arg());
+        let expr = format!("{} = {}", &field.to_string(), value.to_sql_arg());
         self.sets.push(expr);
         self
     }
@@ -1001,10 +1002,10 @@ impl SqlBuilder {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn values<S: SqlArg>(&mut self, values: &[S]) -> &mut Self {
+    pub fn values(&mut self, values: &[SqlArg]) -> &mut Self {
         let values: Vec<String> = values
             .iter()
-            .map(|v| (*v).sql_arg())
+            .map(|v| v.to_string())
             .collect::<Vec<String>>();
         let values = format!("({})", values.join(", "));
 
@@ -1200,14 +1201,14 @@ impl SqlBuilder {
     pub fn and_where_eq<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -1240,14 +1241,14 @@ impl SqlBuilder {
     pub fn and_where_ne<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -1281,14 +1282,14 @@ impl SqlBuilder {
     pub fn and_where_gt<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -1322,14 +1323,14 @@ impl SqlBuilder {
     pub fn and_where_ge<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -1363,14 +1364,14 @@ impl SqlBuilder {
     pub fn and_where_lt<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -1404,14 +1405,14 @@ impl SqlBuilder {
     pub fn and_where_le<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -1816,10 +1817,9 @@ impl SqlBuilder {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn and_where_in<S, T>(&mut self, field: S, list: &[T]) -> &mut Self
+    pub fn and_where_in<S>(&mut self, field: S, list: &[SqlArg]) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
     {
         // Checks
         let field = field.to_string();
@@ -1831,10 +1831,7 @@ impl SqlBuilder {
         }
 
         // Change
-        let list: Vec<String> = list
-            .iter()
-            .map(|v| (*v).sql_arg())
-            .collect::<Vec<String>>();
+        let list: Vec<String> = list.iter().map(|v| v.to_string()).collect::<Vec<String>>();
         let list = list.join(", ");
 
         let mut cond = field;
@@ -1910,10 +1907,9 @@ impl SqlBuilder {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn and_where_not_in<S, T>(&mut self, field: S, list: &[T]) -> &mut Self
+    pub fn and_where_not_in<S>(&mut self, field: S, list: &[SqlArg]) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
     {
         // Checks
         let field = field.to_string();
@@ -1925,10 +1921,7 @@ impl SqlBuilder {
         }
 
         // Change
-        let list: Vec<String> = list
-            .iter()
-            .map(|v| (*v).sql_arg())
-            .collect::<Vec<String>>();
+        let list: Vec<String> = list.iter().map(|v| v.to_string()).collect::<Vec<String>>();
         let list = list.join(", ");
 
         let mut cond = field;
@@ -2105,19 +2098,19 @@ impl SqlBuilder {
     pub fn and_where_between<S, T, U>(&mut self, field: S, min: T, max: U) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
-        U: SqlArg,
+        T: ToSqlArg,
+        U: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let min = min.sql_arg();
+        let min = min.to_sql_arg();
         if min.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
-        let max = max.sql_arg();
+        let max = max.to_sql_arg();
         if max.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2153,19 +2146,19 @@ impl SqlBuilder {
     pub fn and_where_not_between<S, T, U>(&mut self, field: S, min: T, max: U) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
-        U: SqlArg,
+        T: ToSqlArg,
+        U: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let min = min.sql_arg();
+        let min = min.to_sql_arg();
         if min.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
-        let max = max.sql_arg();
+        let max = max.to_sql_arg();
         if max.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2238,14 +2231,14 @@ impl SqlBuilder {
     pub fn or_where_eq<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2279,14 +2272,14 @@ impl SqlBuilder {
     pub fn or_where_ne<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2321,14 +2314,14 @@ impl SqlBuilder {
     pub fn or_where_gt<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2363,14 +2356,14 @@ impl SqlBuilder {
     pub fn or_where_ge<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2405,14 +2398,14 @@ impl SqlBuilder {
     pub fn or_where_lt<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2447,14 +2440,14 @@ impl SqlBuilder {
     pub fn or_where_le<S, T>(&mut self, field: S, value: T) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let value = value.sql_arg();
+        let value = value.to_sql_arg();
         if value.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -2870,10 +2863,9 @@ impl SqlBuilder {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn or_where_in<S, T>(&mut self, field: S, list: &[T]) -> &mut Self
+    pub fn or_where_in<S>(&mut self, field: S, list: &[SqlArg]) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
     {
         // Checks
         let field = field.to_string();
@@ -2885,10 +2877,7 @@ impl SqlBuilder {
         }
 
         // Change
-        let list: Vec<String> = list
-            .iter()
-            .map(|v| (*v).sql_arg())
-            .collect::<Vec<String>>();
+        let list: Vec<String> = list.iter().map(|v| v.to_string()).collect::<Vec<String>>();
         let list = list.join(", ");
 
         let mut cond = field;
@@ -2969,7 +2958,7 @@ impl SqlBuilder {
     pub fn or_where_not_in<S, T>(&mut self, field: S, list: &[T]) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
+        T: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
@@ -2983,7 +2972,7 @@ impl SqlBuilder {
         // Change
         let list: Vec<String> = list
             .iter()
-            .map(|v| (*v).sql_arg())
+            .map(|v| (*v).to_sql_arg())
             .collect::<Vec<String>>();
         let list = list.join(", ");
 
@@ -3165,19 +3154,19 @@ impl SqlBuilder {
     pub fn or_where_between<S, T, U>(&mut self, field: S, min: T, max: U) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
-        U: SqlArg,
+        T: ToSqlArg,
+        U: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let min = min.sql_arg();
+        let min = min.to_sql_arg();
         if min.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
-        let max = max.sql_arg();
+        let max = max.to_sql_arg();
         if max.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -3214,19 +3203,19 @@ impl SqlBuilder {
     pub fn or_where_not_between<S, T, U>(&mut self, field: S, min: T, max: U) -> &mut Self
     where
         S: ToString,
-        T: SqlArg,
-        U: SqlArg,
+        T: ToSqlArg,
+        U: ToSqlArg,
     {
         // Checks
         let field = field.to_string();
         if field.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereField);
         }
-        let min = min.sql_arg();
+        let min = min.to_sql_arg();
         if min.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
-        let max = max.sql_arg();
+        let max = max.to_sql_arg();
         if max.is_empty() {
             return self.set_error(&SqlBuilderError::NoWhereValue(field));
         }
@@ -3827,7 +3816,7 @@ impl SqlBuilder {
 ///
 /// assert_eq!(&sql, "Hello, ''World''");
 /// ```
-pub fn esc<S: ToString>(src: S) -> String {
+fn esc<S: ToString>(src: S) -> String {
     src.to_string().replace("'", "''")
 }
 
@@ -3840,7 +3829,7 @@ pub fn esc<S: ToString>(src: S) -> String {
 ///
 /// assert_eq!(&sql, "'Hello, ''World'''");
 /// ```
-pub fn quote<S: ToString>(src: S) -> String {
+fn quote<S: ToString>(src: S) -> String {
     format!("'{}'", esc(src.to_string()))
 }
 
@@ -3853,7 +3842,7 @@ pub fn quote<S: ToString>(src: S) -> String {
 ///
 /// assert_eq!(&sql, "`Hello, 'World'`");
 /// ```
-pub fn baquote<S: ToString>(src: S) -> String {
+fn baquote<S: ToString>(src: S) -> String {
     format!("`{}`", src.to_string().replace("`", "\\`"))
 }
 
@@ -3866,7 +3855,7 @@ pub fn baquote<S: ToString>(src: S) -> String {
 ///
 /// assert_eq!(&sql, "[Hello, [awesome]] World]");
 /// ```
-pub fn brquote<S: ToString>(src: S) -> String {
+fn brquote<S: ToString>(src: S) -> String {
     format!("[{}]", src.to_string().replace("]", "]]"))
 }
 
@@ -3879,8 +3868,12 @@ pub fn brquote<S: ToString>(src: S) -> String {
 ///
 /// assert_eq!(&sql, "\"Hello, 'World'\"");
 /// ```
-pub fn dquote<S: ToString>(src: S) -> String {
+fn dquote<S: ToString>(src: S) -> String {
     format!("\"{}\"", src.to_string())
+}
+
+pub fn set(value: impl ToSqlArg) -> SqlArg {
+    value.to_sql_arg()
 }
 
 #[cfg(test)]
